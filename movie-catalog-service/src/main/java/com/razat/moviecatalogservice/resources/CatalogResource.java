@@ -11,6 +11,8 @@ import com.razat.moviecatalogservice.models.CatalogItem;
 import com.razat.moviecatalogservice.models.Movie;
 import com.razat.moviecatalogservice.models.Rating;
 import com.razat.moviecatalogservice.models.UserRating;
+import com.razat.moviecatalogservice.services.MovieInfo;
+import com.razat.moviecatalogservice.services.UserRatingInfo;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -26,16 +28,26 @@ public class CatalogResource {
 
     @Autowired
     WebClient.Builder webClientBuilder;
-
+    
+    @Autowired
+    UserRatingInfo userRatingInfo;
+    
+    @Autowired
+    MovieInfo movieInfo;
+    
     @RequestMapping("/{userId}")
     public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
 
-        UserRating userRating = restTemplate.getForObject("http://ratings-data-service/ratingsdata/user/" + userId, UserRating.class);
+        UserRating userRating = userRatingInfo.getUserRating(userId);
+        // using hystrix circut breaker
+        //restTemplate.getForObject("http://ratings-data-service/ratingsdata/user/" + userId, UserRating.class);
 
         return userRating.getRatings().stream()
                 .map(rating -> {
-                    Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
-                    return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
+                    /* Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
+                    return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating()); */
+                	// using hystrix circut breaker
+                	return movieInfo.getCatalogItem(rating);
                 })
                 .collect(Collectors.toList());
 
